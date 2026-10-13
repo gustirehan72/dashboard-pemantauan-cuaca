@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BBWS Sumatera VIII — Pemantauan Cuaca Sumatera Selatan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="app" id="app">
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <img class="brand-mark" src="assets/logo-pu.png" alt="Logo Kementerian PU" />
+        <div class="brand-text">
+          <strong>BBWS SUMATERA VIII</strong>
+          <span>Dashboard Pemantauan &amp; Prakiraan Cuaca — Sumatera Selatan</span>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <div class="wind-widget" id="windWidget" title="Perkiraan angin">
+          <svg class="wind-arrow" id="windArrow" viewBox="0 0 24 24"><path d="M12 3 L18 15 L12 11.5 L6 15 Z"/></svg>
+          <div class="wind-info">
+            <div class="wind-label">Angin</div>
+            <div class="wind-value" id="windValue">-- km/j</div>
+          </div>
+        </div>
+        <div class="clock-block">
+          <div class="clock" id="clock">--.--.--</div>
+          <div class="date" id="dateLabel">-</div>
+        </div>
+        <button class="icon-btn" id="btnFullscreen" title="Layar penuh">
+          <svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="loc-strip" id="locStrip">
+      <span id="locStripText">Memuat lokasi…</span>
+      <span class="loc-controls">
+        <label class="wilayah-label">Wilayah:
+          <select id="selWilayah" class="wilayah-select">
+            <option value="all">Seluruh Sumatera Selatan</option>
+          </select>
+        </label>
+        <span id="autoCycleStatus" class="auto-cycle-status"></span>
+      </span>
+    </div>
+
+    <main class="dashboard">
+
+      <section class="col col-left">
+
+        <div class="card" id="card3day">
+          <h2 class="card-title">Ramalan 3 Hari</h2>
+          <div class="forecast3-list" id="forecast3List">
+            <div class="skeleton-row"></div>
+            <div class="skeleton-row"></div>
+            <div class="skeleton-row"></div>
+          </div>
+        </div>
+
+        <div class="card" id="cardHumidity">
+          <h2 class="card-title">Kelembapan</h2>
+          <div class="humidity-wrap">
+            <svg viewBox="0 0 120 120" class="gauge" id="humidityGauge">
+              <circle cx="60" cy="60" r="50" class="gauge-track"/>
+              <circle cx="60" cy="60" r="50" class="gauge-value" id="gaugeArc"/>
+              <text x="60" y="58" class="gauge-icon" text-anchor="middle">💧</text>
+              <text x="60" y="82" class="gauge-text" id="humidityValue" text-anchor="middle">--%</text>
+            </svg>
+          </div>
+        </div>
+
+        <div class="card card-grow" id="cardTemp">
+          <h2 class="card-title">Suhu <span class="card-subtitle">(tren jam ke depan, langsung dari BMKG)</span></h2>
+          <div class="temp-chart-wrap">
+            <svg viewBox="0 0 320 150" class="temp-chart" id="tempChart"></svg>
+          </div>
+          <div class="temp-now" id="tempNow">-- °C</div>
+        </div>
+
+        <div class="card card-grow" id="cardUdara">
+          <h2 class="card-title">Kualitas Udara</h2>
+          <div class="aqi-wrap">
+            <svg viewBox="0 0 120 120" class="gauge" id="aqiGauge">
+              <circle cx="60" cy="60" r="50" class="gauge-track"/>
+              <circle cx="60" cy="60" r="50" class="gauge-value" id="aqiArc"/>
+              <text x="60" y="56" class="aqi-number" id="aqiValue" text-anchor="middle">--</text>
+              <text x="60" y="74" class="aqi-unit" text-anchor="middle">AQI</text>
+            </svg>
+            <div class="aqi-label" id="aqiLabel">Memuat…</div>
+            <div class="aqi-detail" id="aqiDetail"></div>
+          </div>
+        </div>
+
+      </section>
+
+      <section class="col col-right">
+
+        <div class="card card-grow map-card" id="cardMap">
+          <div id="mapDiv" class="map-frame"></div>
+
+          <div class="map-legend" id="mapLegend">
+            <div class="map-legend-head">
+              <span class="map-legend-title">Legenda</span>
+              <button type="button" class="legend-toggle" id="btnLegend" title="Sembunyikan legenda" aria-label="Sembunyikan legenda">−</button>
+            </div>
+            <div class="map-legend-body" id="mapLegendBody">
+              <div class="legend-section-title">Cuaca</div>
+              <label class="map-legend-item">
+                <input type="checkbox" id="chkBoundary" checked />
+                <span>Batas wilayah</span>
+              </label>
+              <label class="map-legend-item">
+                <input type="checkbox" id="chkMarkers" checked />
+                <span>Ikon cuaca semua area</span>
+              </label>
+              <div class="legend-icons">
+                <span>☀️ Cerah</span>
+                <span>⛅ Cerah berawan</span>
+                <span>☁️ Berawan</span>
+                <span>🌦️ Hujan ringan</span>
+                <span>🌧️ Hujan</span>
+                <span>⛈️ Hujan petir</span>
+                <span><img class="legend-img" src="assets/kabur.png" alt="" /> Kabut / kabur</span>
+                <span>🌤️ Lainnya</span>
+              </div>
+
+              <div class="legend-section-title">Aset BBWS Sumatera VIII</div>
+              <label class="map-legend-item"><input type="checkbox" id="chkAwlr" /><span>💧 Pos Duga Air (AWLR)</span></label>
+              <label class="map-legend-item"><input type="checkbox" id="chkArr" /><span>🌧️ Pos Hujan (ARR)</span></label>
+              <label class="map-legend-item"><input type="checkbox" id="chkAws" /><span>📡 Pos Klimatologi (AWS)</span></label>
+              <label class="map-legend-item"><input type="checkbox" id="chkEmbung" /><span><img class="legend-img" src="assets/embung.png" alt="" /> Embung</span></label>
+              <label class="map-legend-item"><input type="checkbox" id="chkBendung" /><span><img class="legend-img" src="assets/bendung.png" alt="" /> Bendung</span></label>
+              <label class="map-legend-item"><input type="checkbox" id="chkDas" /><span>〰️ Daerah Aliran Sungai</span></label>
+
+              <div class="map-legend-note" id="mapLegendNote" hidden></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="cardHourly">
+          <h2 class="card-title">Ramalan 24 Jam</h2>
+          <div class="hourly-strip" id="hourlyStrip">
+            <div class="skeleton-row"></div>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      Sumber data cuaca: <strong>BMKG</strong> (Badan Meteorologi, Klimatologi, dan Geofisika) ·
+      Data wilayah: <a href="https://wilayah.id" target="_blank" rel="noopener">wilayah.id</a> ·
+      Peta: OpenStreetMap (jalan &amp; tempat) / Esri (citra satelit) · Batas wilayah: Nominatim/OpenStreetMap ·
+      Kualitas udara: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CAMS) ·
+      Data aset: BBWS Sumatera VIII
+    </footer>
+  </div>
+
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script defer src="script.js"></script>
+</body>
+</html>
